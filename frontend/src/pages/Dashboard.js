@@ -52,20 +52,17 @@ function Dashboard() {
 
     try {
       // Send a POST request to the backend to create a new interview.
-      const response = await fetch(
-        `${API_BASE_URL}/api/interviews/create`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // The body of the request contains the form data, mapped to the keys expected by the backend.
-          body: JSON.stringify({
-            jobRole: form.role,
-            jobDescription: form.description,
-            duration: form.duration,
-            interviewType: form.type,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/interviews/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // The body of the request contains the form data, mapped to the keys expected by the backend.
+        body: JSON.stringify({
+          jobRole: form.role,
+          jobDescription: form.description,
+          duration: form.duration,
+          interviewType: form.type,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create interview");

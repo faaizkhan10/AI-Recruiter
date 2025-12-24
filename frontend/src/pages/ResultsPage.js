@@ -154,7 +154,9 @@ function ResultsPage() {
                       </p>
                     </div>
                   ) : (
-                    <p className="text-gray-400 italic mt-2">No answer provided</p>
+                    <p className="text-gray-400 italic mt-2">
+                      No answer provided
+                    </p>
                   )}
                 </div>
               ))}
@@ -163,7 +165,8 @@ function ResultsPage() {
         ) : (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <p className="text-gray-500 text-center">
-              Interview questions will appear here once the interview is started.
+              Interview questions will appear here once the interview is
+              started.
             </p>
           </div>
         )}
@@ -207,4 +210,3 @@ function ResultsPage() {
 }
 
 export default ResultsPage;
-
