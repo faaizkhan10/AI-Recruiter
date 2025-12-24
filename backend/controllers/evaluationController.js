@@ -20,8 +20,9 @@ export const evaluateAnswers = async (req, res) => {
 
     const score = parseInt(scoreText.trim(), 10);
 
-    // Update the interview document with the score and answers
+    // Update the interview document with the score, questions, and answers
     await Interview.findByIdAndUpdate(interviewId, {
+      questions: qaPairs.map((p) => p.question),
       answers: qaPairs.map((p) => p.answer),
       score: score,
       status: "Completed",

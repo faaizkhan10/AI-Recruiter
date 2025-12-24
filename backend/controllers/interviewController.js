@@ -185,4 +185,33 @@ export const handleNextQuestion = async (req, res) => {
   }
 };
 
+// Controller to delete an interview by ID
+export const deleteInterview = async (req, res) => {
+  const mongoose = (await import("mongoose")).default;
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ message: "Invalid interview ID format" });
+    }
+    
+    const interview = await Interview.findByIdAndDelete(id);
+    
+    if (interview) {
+      res.json({ 
+        message: "Interview deleted successfully",
+        deletedInterview: interview 
+      });
+    } else {
+      res.status(404).json({ message: "Interview not found" });
+    }
+  } catch (err) {
+    console.error("Error deleting interview:", err);
+    res.status(500).json({ 
+      message: "Failed to delete interview",
+      error: err.message 
+    });
+  }
+};
+
 

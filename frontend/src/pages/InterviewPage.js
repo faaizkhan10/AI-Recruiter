@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import VoiceInput from "../components/VoiceInput";
 
+// API base URL - uses environment variable for deployment flexibility
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 // This component manages the entire AI interview experience for the candidate.
 function InterviewPage() {
   const { id: interviewId } = useParams(); // Get interview ID from URL
@@ -27,7 +30,7 @@ function InterviewPage() {
       try {
         // 1. Fetch interview details
         const res = await fetch(
-          `http://localhost:5000/api/interviews/${interviewId}`
+          `${API_BASE_URL}/api/interviews/${interviewId}`
         );
 
         if (!res.ok) {
@@ -46,7 +49,7 @@ function InterviewPage() {
 
         // 2. Generate questions for the interview
         const questionsRes = await fetch(
-          "http://localhost:5000/api/interviews/generate",
+          `${API_BASE_URL}/api/interviews/generate`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -132,7 +135,7 @@ function InterviewPage() {
   // Function to send the completed interview for evaluation.
   const evaluateInterview = async (finalQaPairs) => {
     try {
-      const res = await fetch("http://localhost:5000/api/candidates/evaluate", {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interviewId, qaPairs: finalQaPairs }),

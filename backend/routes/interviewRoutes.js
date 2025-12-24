@@ -8,6 +8,7 @@ import {
   generateQuestion,
   getInterviewById,
   handleNextQuestion,
+  deleteInterview,
 } from "../controllers/interviewController.js";
 
 // Create a new router object.
@@ -21,6 +22,8 @@ router.get("/", getAllInterviews);
 router.post("/generate", generateQuestion);
 // Define a POST route to handle the progression of an interview, getting the next question.
 router.post("/next", handleNextQuestion);
+// Define a DELETE route to delete an interview by its ID
+router.delete("/:id", deleteInterview);
 // Define a GET route to fetch a single interview by its ID
 router.get("/:id", getInterviewById);
 

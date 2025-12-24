@@ -4,7 +4,8 @@
 
 import Dashboard from "./pages/Dashboard";
 import InterviewPage from "./pages/InterviewPage";
-import VoiceTestPage from "./pages/VoiceTestPage"; // Import the new test page
+import VoiceTestPage from "./pages/VoiceTestPage";
+import ResultsPage from "./pages/ResultsPage";
 
 // Import routing utilities from react-router-dom
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
@@ -22,6 +23,8 @@ function App() {
         <Route path="/voice-test" element={<VoiceTestPage />} />
         {/* Route for the AI interview page, which uses a dynamic ID in the URL */}
         <Route path="/interview/:id" element={<InterviewPage />} />
+        {/* Route for viewing interview results */}
+        <Route path="/results/:id" element={<ResultsPage />} />
       </Routes>
     </Router>
   );

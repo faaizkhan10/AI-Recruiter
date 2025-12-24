@@ -2,6 +2,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
+// API base URL - uses environment variable for deployment flexibility
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 // The Dashboard component serves as the main interface for recruiters.
 // It allows them to create new interviews and view a list of all previously created interviews.
 function Dashboard() {
@@ -22,6 +25,7 @@ function Dashboard() {
   // State to manage loading and success messages for better UX
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [deletingId, setDeletingId] = useState(null); // Track which interview is being deleted
 
   // `useEffect` hook to fetch existing interviews from the backend when the component first loads.
   // The empty dependency array `[]` ensures this effect runs only once.
@@ -32,7 +36,7 @@ function Dashboard() {
   // Asynchronous function to load all interviews from the backend API.
   const fetchInterviews = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/interviews");
+      const res = await fetch(`${API_BASE_URL}/api/interviews`);
       const data = await res.json();
       setInterviews(data); // Update state with backend response
     } catch (error) {
@@ -49,7 +53,7 @@ function Dashboard() {
     try {
       // Send a POST request to the backend to create a new interview.
       const response = await fetch(
-        "http://localhost:5000/api/interviews/create",
+        `${API_BASE_URL}/api/interviews/create`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -75,6 +79,45 @@ function Dashboard() {
       setSuccessMessage("Failed to create interview. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to delete an interview
+  const handleDeleteInterview = async (interviewId, jobRole) => {
+    // Confirm deletion
+    if (
+      !window.confirm(
+        `Are you sure you want to delete the interview for "${jobRole}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(interviewId);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/interviews/${interviewId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete interview");
+      }
+
+      // Remove from local state immediately for better UX
+      setInterviews(interviews.filter((i) => i._id !== interviewId));
+      setSuccessMessage("Interview deleted successfully!");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error("Error deleting interview:", error);
+      setSuccessMessage("Failed to delete interview. Please try again.");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -172,24 +215,64 @@ function Dashboard() {
         </h2>
 
         {/* Loop through the 'interviews' state array and render a list item for each interview. */}
-        <ul className="list-none p-0">
-          {interviews.map((i) => (
-            <li key={i._id} className="bg-white p-4 mb-2.5 rounded shadow-sm">
-              <strong>{i.jobRole}</strong> - {i.interviewType} ({i.duration}{" "}
-              mins)
-              <br />
-              <small className="text-gray-500">
-                Interview Link:{" "}
-                <Link
-                  to={`/interview/${i._id}`}
-                  className="text-blue-500 no-underline"
-                >
-                  {i.link}
-                </Link>
-              </small>
-            </li>
-          ))}
-        </ul>
+        {interviews.length === 0 ? (
+          <div className="text-center py-10 bg-white rounded shadow-sm">
+            <p className="text-gray-500">No interviews created yet.</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Create your first interview above!
+            </p>
+          </div>
+        ) : (
+          <ul className="list-none p-0">
+            {interviews.map((i) => (
+              <li
+                key={i._id}
+                className="bg-white p-4 mb-2.5 rounded shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <strong className="text-lg">{i.jobRole}</strong>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                        {i.interviewType}
+                      </span>
+                      {i.score !== undefined && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-semibold">
+                          Score: {i.score}/100
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Duration: {i.duration} mins
+                    </p>
+                    <div className="flex gap-3 flex-wrap">
+                      <Link
+                        to={`/interview/${i._id}`}
+                        className="text-blue-500 hover:underline text-sm"
+                      >
+                        📝 Take Interview
+                      </Link>
+                      <Link
+                        to={`/results/${i._id}`}
+                        className="text-green-500 hover:underline text-sm"
+                      >
+                        📊 View Results
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteInterview(i._id, i.jobRole)}
+                        disabled={deletingId === i._id}
+                        className="text-red-500 hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete interview"
+                      >
+                        {deletingId === i._id ? "⏳ Deleting..." : "🗑️ Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
