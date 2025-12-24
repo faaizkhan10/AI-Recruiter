@@ -181,7 +181,7 @@ function Dashboard() {
               <small className="text-gray-500">
                 Interview Link:{" "}
                 <Link
-                  to={i.link.replace("http://localhost:3000", "")}
+                  to={`/interview/${i._id}`}
                   className="text-blue-500 no-underline"
                 >
                   {i.link}

@@ -3,6 +3,7 @@ import {
   generateContent,
   generateAIQuestion,
   conductInterview,
+  getFallbackQuestions,
 } from "../utils/geminiService.js";
 
 export const createInterview = async (req, res) => {
@@ -41,21 +42,67 @@ export const getAllInterviews = async (req, res) => {
 
 export const generateQuestion = async (req, res) => {
   try {
-    // Destructure role and difficulty from the request body
-    const { role, difficulty, count = 1 } = req.body;
+    // Destructure role and count from the request body
+    // Support both 'role' and 'jobRole' for compatibility
+    const { role, jobRole, count = 1, interviewType } = req.body;
+    
+    // Use role or jobRole, whichever is provided
+    const jobRoleValue = role || jobRole;
+    
+    if (!jobRoleValue) {
+      return res.status(400).json({ 
+        message: "Role or jobRole is required in the request body" 
+      });
+    }
 
     const questions = [];
-    // Generate 'count' number of questions
-    for (let i = 0; i < count; i++) {
-      // Call the Gemini service to generate a question
-      const question = await generateAIQuestion(role, difficulty);
-      questions.push(question);
+    let useFallback = false;
+    
+    try {
+      // Generate 'count' number of questions
+      // Add delay between requests to avoid hitting rate limits (free tier: 5 requests/minute)
+      // Wait 13 seconds between requests to stay safely under the limit
+      // For 3 questions: ~26 seconds total, for 5 questions: ~52 seconds total
+      const delayBetweenRequests = 13000; // 13 seconds = ~4.6 requests per minute
+      
+      for (let i = 0; i < count; i++) {
+        // Call the Gemini service to generate a question
+        const question = await generateAIQuestion(jobRoleValue);
+        questions.push(question);
+        
+        // Add delay between requests (except for the last one)
+        if (i < count - 1) {
+          console.log(`Waiting ${delayBetweenRequests / 1000}s before generating next question...`);
+          await new Promise((resolve) => setTimeout(resolve, delayBetweenRequests));
+        }
+      }
+    } catch (apiError) {
+      // Check if it's a daily quota error
+      if (apiError.message && apiError.message.includes("Daily API quota exceeded")) {
+        console.warn("API quota exhausted, using fallback questions");
+        useFallback = true;
+        
+        // Use fallback questions
+        const fallbackQuestions = getFallbackQuestions(jobRoleValue, interviewType, count);
+        questions.push(...fallbackQuestions);
+      } else {
+        // Re-throw other errors
+        throw apiError;
+      }
     }
 
     // Send the generated questions back as a JSON response
-    res.json({ questions });
+    res.json({ 
+      questions,
+      usingFallback: useFallback,
+      message: useFallback ? "Using fallback questions due to API quota limit" : undefined
+    });
   } catch (err) {
-    res.status(500).json({ message: "Failed to generate question" });
+    console.error("Error generating questions:", err);
+    res.status(500).json({ 
+      message: "Failed to generate question",
+      error: err.message 
+    });
   }
 };
 
@@ -65,7 +112,7 @@ export const getInterviewById = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: "Interview not found" });
+      return res.status(404).json({ message: "Invalid interview ID format" });
     }
     const interview = await Interview.findById(id);
     if (interview) {
@@ -74,7 +121,11 @@ export const getInterviewById = async (req, res) => {
       res.status(404).json({ message: "Interview not found" });
     }
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch interview" });
+    console.error("Error fetching interview by ID:", err);
+    res.status(500).json({ 
+      message: "Failed to fetch interview",
+      error: err.message 
+    });
   }
 };
 
@@ -90,11 +141,7 @@ export const handleNextQuestion = async (req, res) => {
           .status(400)
           .json({ message: "jobRole is required for the first question." });
       }
-      const firstQuestion = await generateAIQuestion(
-        jobRole,
-        "medium",
-        "start the interview"
-      );
+      const firstQuestion = await generateAIQuestion(jobRole); // Removed "medium" and "start the interview"
       return res.json({ nextQuestion: firstQuestion });
     }
 
@@ -137,3 +184,5 @@ export const handleNextQuestion = async (req, res) => {
     res.status(500).json({ message: "Failed to get next question" });
   }
 };
+
+
