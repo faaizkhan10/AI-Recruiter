@@ -110,6 +110,21 @@ function InterviewPage() {
     }
   }, [currentQuestionIndex, interviewStatus]);
 
+  // Effect 3: Detect tab switching and show alert
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && interviewStatus === "in-progress") {
+        alert("Warning: Please do not switch tabs during the interview. Your responses are being monitored.");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [interviewStatus]);
+
   // Callback for when a final voice transcript is ready.
   const handleAnswer = async (transcript) => {
     if (!transcript) return; // Ignore empty transcripts.
