@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import VoiceInput from "../components/VoiceInput";
 
@@ -96,7 +96,7 @@ function InterviewPage() {
   }, [interviewId]);
 
   // Function to speak the current question out loud using Web Speech API.
-  const speakCurrentQuestion = () => {
+  const speakCurrentQuestion = useCallback(() => {
     if (!(questions.length > 0)) return;
     const text = questions[currentQuestionIndex];
 
@@ -120,7 +120,7 @@ function InterviewPage() {
       const timer = setTimeout(() => setAiSpeaking(false), 2000);
       return () => clearTimeout(timer);
     }
-  };
+  }, [questions, currentQuestionIndex]);
 
   // Effect 2: Trigger TTS when question or status changes
   useEffect(() => {
@@ -128,7 +128,7 @@ function InterviewPage() {
       setLiveTranscript("");
       speakCurrentQuestion();
     }
-  }, [currentQuestionIndex, interviewStatus, questions]);
+  }, [interviewStatus, speakCurrentQuestion]);
 
   // Effect 3: Detect tab switching and show alert
   useEffect(() => {
