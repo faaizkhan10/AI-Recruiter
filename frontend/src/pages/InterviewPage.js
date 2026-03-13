@@ -30,13 +30,13 @@ function InterviewPage() {
       try {
         // 1. Fetch interview details
         const res = await fetch(
-          `${API_BASE_URL}/api/interviews/${interviewId}`
+          `${API_BASE_URL}/api/interviews/${interviewId}`,
         );
 
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(
-            errorData.message || "Failed to fetch interview details"
+            errorData.message || "Failed to fetch interview details",
           );
         }
 
@@ -61,13 +61,13 @@ function InterviewPage() {
               difficulty: "medium",
               count: 3, // Reduced to 3 to avoid rate limits (free tier: 5 requests/minute)
             }),
-          }
+          },
         );
 
         if (!questionsRes.ok) {
           const errorData = await questionsRes.json().catch(() => ({}));
           throw new Error(
-            errorData.message || `Backend Error: ${questionsRes.statusText}`
+            errorData.message || `Backend Error: ${questionsRes.statusText}`,
           );
         }
 
@@ -95,26 +95,48 @@ function InterviewPage() {
     setupInterview();
   }, [interviewId]);
 
-  // Effect 2: Handle the AI speaking animation when the question changes.
-  useEffect(() => {
-    // Only run if the interview is in progress.
-    if (interviewStatus === "in-progress") {
-      setAiSpeaking(true);
-      setLiveTranscript(""); // Clear any previous live transcript
+  // Function to speak the current question out loud using Web Speech API.
+  const speakCurrentQuestion = () => {
+    if (!(questions.length > 0)) return;
+    const text = questions[currentQuestionIndex];
 
-      // Simulate AI speaking for 2 seconds, then allow user to record.
+    // mark that AI is speaking so UI disables the mic and shows animation
+    setAiSpeaking(true);
+
+    if (window && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.onend = () => {
+        setAiSpeaking(false);
+      };
+      utter.onerror = () => {
+        setAiSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utter);
+    } else {
+      // Fallback animation if speech not supported
       const timer = setTimeout(() => setAiSpeaking(false), 2000);
-
-      // Cleanup timer if the component unmounts or the question changes again.
       return () => clearTimeout(timer);
     }
-  }, [currentQuestionIndex, interviewStatus]);
+  };
+
+  // Effect 2: Trigger TTS when question or status changes
+  useEffect(() => {
+    if (interviewStatus === "in-progress") {
+      setLiveTranscript("");
+      speakCurrentQuestion();
+    }
+  }, [currentQuestionIndex, interviewStatus, questions]);
 
   // Effect 3: Detect tab switching and show alert
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && interviewStatus === "in-progress") {
-        alert("Warning: Please do not switch tabs during the interview. Your responses are being monitored.");
+        alert(
+          "Warning: Please do not switch tabs during the interview. Your responses are being monitored.",
+        );
       }
     };
 
@@ -189,7 +211,7 @@ function InterviewPage() {
       if (voiceInputRef.current) {
         console.log(
           "Calling voiceInputRef.current.start() with previous answer:",
-          previousAnswer
+          previousAnswer,
         );
         // Pass previous answer to VoiceInput so it can continue from there
         voiceInputRef.current.start(previousAnswer);
@@ -288,9 +310,21 @@ function InterviewPage() {
             🤖 AI Interviewer
           </h3>
 
-          <p className="text-lg text-gray-600 leading-relaxed flex-grow">
-            {questions.length > 0 ? questions[currentQuestionIndex] : "..."}
-          </p>
+          <div className="flex flex-col items-center flex-grow">
+            <p className="text-lg text-gray-600 leading-relaxed">
+              {questions.length > 0 ? questions[currentQuestionIndex] : "..."}
+            </p>
+            {/* replay button */}
+            {questions.length > 0 && (
+              <button
+                onClick={speakCurrentQuestion}
+                className="mt-3 text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                title="Hear the question again"
+              >
+                🔊 Replay
+              </button>
+            )}
+          </div>
 
           {aiSpeaking && (
             <div className="mt-5 flex justify-center items-end gap-1 h-[30px]">
@@ -321,7 +355,7 @@ function InterviewPage() {
                 ?.answer
                 ? `"${
                     qaPairs.find(
-                      (pair, index) => index === currentQuestionIndex
+                      (pair, index) => index === currentQuestionIndex,
                     ).answer
                   }"`
                 : "Click the mic to record your answer."}
@@ -379,8 +413,8 @@ function InterviewPage() {
           {isRecording
             ? "Recording... Click to Stop"
             : aiSpeaking
-            ? "Listen to the question..."
-            : "Click to Record Answer"}
+              ? "Listen to the question..."
+              : "Click to Record Answer"}
         </p>
       </div>
     </div>
