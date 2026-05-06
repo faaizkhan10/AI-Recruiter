@@ -42,13 +42,21 @@ export const generateAIQuestion = async (role, retries = 3) => {
       const result = await model.generateContent(prompt);
       return result.response.text().trim();
     } catch (error) {
-      if (error.status === 429 && i < retries - 1) {
+      const status = error.status || (error.message?.includes("Service Unavailable") ? 503 : undefined);
+      const retryable = status === 429 || status === 503;
+
+      if (retryable && i < retries - 1) {
         const delay = Math.pow(2, i) * 1000; // Exponential backoff
-        console.log(`Retrying in ${delay}ms...`);
+        console.log(`Retrying in ${delay}ms due to status ${status}...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
-      } else {
-        throw error;
+        continue;
       }
+
+      const finalError = new Error(
+        `Gemini API failed${status ? ` (${status})` : ""}: ${error.message || "Unknown error"}`,
+      );
+      finalError.status = status;
+      throw finalError;
     }
   }
 };

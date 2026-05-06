@@ -77,18 +77,33 @@ export const generateQuestion = async (req, res) => {
         }
       }
     } catch (apiError) {
-      // Check if it's a daily quota error
-      if (apiError.message && apiError.message.includes("Daily API quota exceeded")) {
-        console.warn("API quota exhausted, using fallback questions");
+      const apiStatus = apiError.status || (apiError.message?.includes("Service Unavailable") ? 503 : undefined);
+      const shouldFallback =
+        apiStatus === 429 ||
+        apiStatus === 503 ||
+        (apiError.message && apiError.message.toLowerCase().includes("quota")) ||
+        (apiError.message && apiError.message.toLowerCase().includes("service unavailable"));
+
+      if (shouldFallback) {
+        console.warn("Gemini API unavailable or rate limited, using fallback questions", {
+          status: apiStatus,
+          message: apiError.message,
+        });
         useFallback = true;
-        
-        // Use fallback questions
-        const fallbackQuestions = getFallbackQuestions(jobRoleValue, interviewType, count);
+
+        const fallbackCount = count - questions.length;
+        const fallbackQuestions = getFallbackQuestions(jobRoleValue, interviewType, fallbackCount);
         questions.push(...fallbackQuestions);
       } else {
-        // Re-throw other errors
         throw apiError;
       }
+    }
+
+    if (questions.length < count) {
+      const remaining = count - questions.length;
+      const fallbackQuestions = getFallbackQuestions(jobRoleValue, interviewType, remaining);
+      questions.push(...fallbackQuestions);
+      useFallback = true;
     }
 
     // Send the generated questions back as a JSON response

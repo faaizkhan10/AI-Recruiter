@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
+import Webcam from "react-webcam";
+import * as faceapi from "face-api.js";
 import VoiceInput from "../components/VoiceInput";
 
 // API base URL - uses environment variable for deployment flexibility
@@ -22,7 +24,13 @@ function InterviewPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(true); // Start with AI speaking
   const [liveTranscript, setLiveTranscript] = useState("");
+  const [faceApiReady, setFaceApiReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(true);
+  const [faceWarning, setFaceWarning] = useState("");
+  const [cameraError, setCameraError] = useState(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const voiceInputRef = useRef(null);
+  const webcamRef = useRef(null);
 
   // Effect 1: Fetch interview details and questions on initial load.
   useEffect(() => {
@@ -94,6 +102,88 @@ function InterviewPage() {
 
     setupInterview();
   }, [interviewId]);
+
+  // Load face-api models and start the webcam preview once when the component mounts.
+  useEffect(() => {
+    const modelUrl = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
+
+    const loadModels = async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+          faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+        ]);
+        setFaceApiReady(true);
+      } catch (error) {
+        console.error("Failed to load face detection models:", error);
+        setFaceWarning("Unable to initialize face detection.");
+      }
+    };
+
+    const handleUserMedia = () => {
+      console.log("Camera preview started");
+      setCameraReady(true);
+      setCameraError(null);
+    };
+
+    const handleUserMediaError = (error) => {
+      console.error("Camera access failed:", error);
+      setCameraError(
+        "Camera access is required for face detection. Please allow camera permission.",
+      );
+    };
+
+    loadModels();
+    setCameraReady(false);
+
+    return () => {
+      const videoEl = webcamRef.current?.video;
+      if (videoEl && videoEl.srcObject) {
+        const tracks = videoEl.srcObject.getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  // Monitor face presence while interview is in progress and recording.
+  useEffect(() => {
+    const videoEl = webcamRef.current?.video;
+    if (!faceApiReady || !videoEl || interviewStatus !== "in-progress") {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      if (!videoEl || videoEl.readyState < 2) {
+        return;
+      }
+
+      try {
+        const detection = await faceapi
+          .detectSingleFace(
+            videoEl,
+            new faceapi.TinyFaceDetectorOptions(),
+          )
+          .withFaceLandmarks();
+
+        if (!detection) {
+          setFaceDetected(false);
+          if (isRecording) {
+            setFaceWarning(
+              "Face not detected. Please keep your face visible to the camera.",
+            );
+          }
+        } else {
+          setFaceDetected(true);
+          setFaceWarning("");
+        }
+      } catch (error) {
+        console.error("Face detection error:", error);
+        setFaceWarning("Face detection is currently unavailable.");
+      }
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [faceApiReady, interviewStatus, isRecording]);
 
   // Function to speak the current question out loud using Web Speech API.
   const speakCurrentQuestion = useCallback(() => {
@@ -301,6 +391,60 @@ function InterviewPage() {
         {interview?.jobRole} Interview ({currentQuestionIndex + 1} /{" "}
         {questions.length})
       </h2>
+
+      {/* Face Detection Preview and Warnings */}
+      <div className="mb-8 w-[90%] max-w-7xl rounded-3xl bg-white p-5 shadow-lg grid gap-4 md:grid-cols-[1fr_auto] items-center">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-gray-700">
+            Face detection is active during your answers. Keep your face visible to the camera and avoid looking away.
+          </p>
+          {cameraError ? (
+            <p className="text-sm font-semibold text-red-600">{cameraError}</p>
+          ) : faceWarning ? (
+            <p className="text-sm font-semibold text-orange-600">{faceWarning}</p>
+          ) : (
+            <p className="text-sm text-green-600">
+              {faceApiReady
+                ? "Face detection ready."
+                : "Loading face detection models..."}
+            </p>
+          )}
+        </div>
+        <div className="relative w-full max-w-[280px] overflow-hidden rounded-3xl border border-gray-200 bg-black">
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            mirrored
+            width={280}
+            height={176}
+            className="h-44 w-full object-cover block bg-black"
+            videoConstraints={{
+              width: 640,
+              height: 480,
+              facingMode: "user",
+            }}
+            onUserMedia={() => {
+              console.log("Webcam stream ready");
+              setCameraReady(true);
+              setCameraError(null);
+            }}
+            onUserMediaError={(error) => {
+              console.error("Webcam access failed:", error);
+              setCameraError(
+                "Camera access is required for face detection. Please allow camera permission.",
+              );
+            }}
+          />
+          {!cameraReady && !cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-center text-sm text-white">
+              Initializing camera preview...
+            </div>
+          )}
+          <div className="absolute bottom-2 left-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
+            Camera preview
+          </div>
+        </div>
+      </div>
 
       {/* Main Content: AI and Candidate cards */}
       <div className="flex justify-center gap-10 w-[90%] max-w-7xl flex-wrap">
