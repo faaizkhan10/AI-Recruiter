@@ -10,6 +10,7 @@
   - API documentation
   - Technology stack
   - Project structure
+  - System diagrams (Use Case, ER, Workflow)
 
 ### 2. Results Dashboard
 - **ResultsPage.js**: New page to view interview results
@@ -24,6 +25,17 @@
 - Quick access to results
 - Better visual hierarchy
 - Status badges and score indicators
+
+### 4. Face Detection & Tab Monitoring
+- **Face Detection**: Real-time face detection during interviews using face-api.js
+- **Tab Monitoring**: Prevents cheating by detecting tab switches during recording
+- **Camera Integration**: React-webcam for reliable camera access
+- **User Warnings**: Visual feedback for face detection and tab monitoring violations
+
+### 5. API Reliability Improvements
+- **Fallback Questions**: Automatic fallback to pre-generated questions when Gemini API fails
+- **Retry Logic**: Smart retry with exponential backoff for API rate limits
+- **Error Handling**: Comprehensive error handling with user-friendly messages
 
 ## 🚀 Recommended Next Steps
 
@@ -132,9 +144,11 @@
 ### Must Have (For Resume)
 1. ✅ Comprehensive README
 2. ✅ Results Dashboard
-3. Error Handling
-4. Authentication
-5. Testing
+3. ✅ Face Detection & Tab Monitoring
+4. ✅ API Reliability (Fallback & Retry)
+5. Error Handling
+6. Authentication
+7. Testing
 
 ### Should Have (Makes it Impressive)
 1. Analytics Dashboard

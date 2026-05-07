@@ -33,7 +33,7 @@ Recruiter Dashboard → Create Interview → AI Question Generation → Store in
 ### 2. Candidate Interview Flow
 
 ```
-Interview Link → Voice Input → Speech-to-Text → AI Evaluation → Results Display
+Interview Link → Camera/Microphone Access → Face Detection Active → Voice Input → Speech-to-Text → Tab Monitoring → AI Evaluation → Results Display
 ```
 
 ### 3. AI Integration
@@ -55,12 +55,18 @@ Frontend (React) ↔ Backend API (Express) ↔ Database (MongoDB) ↔ AI Service
 - **Multi-format Interviews**: Technical, behavioral, and mixed-type interviews
 - **Real-time Transcription**: Live conversion of speech to text
 - **Intelligent Scoring**: AI-powered evaluation with detailed feedback
+- **Face Detection**: Real-time monitoring of candidate presence during interviews
+- **Tab Monitoring**: Prevents cheating by detecting tab switches during recording
+- **Camera Integration**: React-webcam for reliable video capture
 - **Responsive Design**: Mobile-friendly interface with modern UI
 - **Rate Limiting Handling**: Graceful degradation during API constraints
 
 ### Technical Highlights
 
 - **ES6 Modules**: Modern JavaScript with import/export syntax
+- **Face Detection**: Real-time face recognition using face-api.js
+- **Tab Monitoring**: Page visibility API for interview integrity
+- **Camera Integration**: React-webcam for cross-browser compatibility
 - **Environment Configuration**: Secure API key management
 - **Error Handling**: Comprehensive error boundaries and fallbacks
 - **CORS Configuration**: Proper cross-origin resource sharing
@@ -98,29 +104,46 @@ recognition.onresult = (event) => {
 - Real-time updates are handled through state setters
 - No external state management library is used, keeping it simple
 
-#### API Integration
+#### Face Detection & Monitoring
 
-**Q: How does the frontend handle API calls to the backend?**
+**Q: How is face detection implemented during interviews?**
 
-**A:** The application uses the Fetch API with async/await pattern:
+**A:** The application uses face-api.js library with pre-trained models:
 
 ```javascript
-const response = await fetch(`${API_BASE_URL}/api/interviews/generate`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ jobRole, jobDescription }),
+import * as faceapi from 'face-api.js';
+
+// Load models from CDN
+await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+
+// Detect faces in video stream
+const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+```
+
+**Q: How does tab monitoring prevent cheating during interviews?**
+
+**A:** Using the Page Visibility API to detect when candidates switch tabs:
+
+```javascript
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isRecording) {
+    showWarning('Please stay on this tab during recording');
+  }
 });
 ```
 
-**Q: How is the API base URL configured for different environments?**
+**Q: How is camera access handled for cross-browser compatibility?**
 
-**A:** Environment variables are used with a fallback:
+**A:** Using react-webcam component with proper error handling:
 
 ```javascript
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+<ReactWebcam
+  audio={false}
+  videoConstraints={videoConstraints}
+  onUserMedia={handleUserMedia}
+  onUserMediaError={handleUserMediaError}
+/>
 ```
-
-This allows different URLs for development and production deployments.
 
 ### ⚙️ Backend Development Questions
 
@@ -313,12 +336,14 @@ if (!response.ok) throw new Error("Failed to fetch");
 - `backend/server.js` - Main server setup
 - `backend/controllers/interviewController.js` - Business logic
 - `backend/utils/geminiService.js` - AI integration
-- `frontend/src/pages/InterviewPage.js` - Main interview flow
+- `frontend/src/pages/InterviewPage.js` - Main interview flow with face detection
 - `frontend/src/pages/Dashboard.js` - Interview management
+- `frontend/src/components/VoiceInput.js` - Voice recording component
+- `frontend/src/components/VoiceInputWrapper.js` - Voice input wrapper with tab monitoring
 
 ### Key Dependencies
 
 - **Backend**: express, mongoose, @google/generative-ai
-- **Frontend**: react, react-router-dom, tailwindcss
+- **Frontend**: react, react-router-dom, tailwindcss, face-api.js, react-webcam
 
 This comprehensive guide covers the technical depth and architectural decisions made in building the AI Recruiter platform.
